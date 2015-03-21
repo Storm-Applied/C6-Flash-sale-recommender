@@ -3,6 +3,7 @@ package stormapplied.flashsale;
 import org.apache.commons.lang.StringUtils;
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
+import backtype.storm.metric.LoggingMetricsConsumer;
 
 public class RemoteTopologyRunner {
   public static void main(String[] args) throws Exception {
@@ -32,6 +33,8 @@ public class RemoteTopologyRunner {
     config.setMessageTimeoutSecs(TIMEOUT);
     config.setNumWorkers(NUM_WORKERS);
     config.setNumAckers(NUM_ACKERS);
+    config.registerMetricsConsumer(LoggingMetricsConsumer.class, 1);
+
     return config;
-  }  
+  }
 }

@@ -7,6 +7,7 @@ import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
+import stormapplied.flashsale.metrics.SuccessRateMetric;
 
 import stormapplied.flashsale.services.FlashSaleClient;
 import stormapplied.flashsale.domain.Sale;
@@ -21,12 +22,18 @@ public class LookupSalesDetails extends BaseRichBolt {
   private FlashSaleClient client;
   private OutputCollector outputCollector;
 
+  private final int METRICS_WINDOW = 15;
+  private transient SuccessRateMetric sucessRates;
+
   @Override
   public void prepare(Map config,
                       TopologyContext context,
                       OutputCollector outputCollector) {
     this.outputCollector = outputCollector;
     client = new FlashSaleClient(TIMEOUT);
+
+    sucessRates = new SuccessRateMetric();
+    context.registerMetric("sales-lookup-success-rate", sucessRates, METRICS_WINDOW);
   }
 
   @Override
@@ -40,6 +47,7 @@ public class LookupSalesDetails extends BaseRichBolt {
         Sale sale = client.lookupSale(saleId);
         sales.add(sale);
       } catch (Timeout e) {
+        sucessRates.incrFail(1);
         outputCollector.reportError(e);
       }
     }
@@ -47,6 +55,7 @@ public class LookupSalesDetails extends BaseRichBolt {
     if (sales.isEmpty()) {
       outputCollector.fail(tuple);
     } else {
+      sucessRates.incrSuccess(sales.size());
       outputCollector.emit(new Values(customerId, sales));
       outputCollector.ack(tuple);
     }
