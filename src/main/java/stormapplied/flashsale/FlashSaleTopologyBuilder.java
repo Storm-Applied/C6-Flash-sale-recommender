@@ -15,17 +15,17 @@ public class FlashSaleTopologyBuilder {
     TopologyBuilder builder = new TopologyBuilder();
 
     builder.setSpout(CUSTOMER_RETRIEVAL_SPOUT, new CustomerRetrievalSpout())
-      .setMaxSpoutPending(25);
+      .setMaxSpoutPending(250);
 
-    builder.setBolt(FIND_RECOMMENDED_SALES, new FindRecommendedSales(), 1)
+    builder.setBolt(FIND_RECOMMENDED_SALES, new FindRecommendedSales(), 16)
       .setNumTasks(32)
       .shuffleGrouping(CUSTOMER_RETRIEVAL_SPOUT);
 
-    builder.setBolt(LOOKUP_SALES_DETAILS, new LookupSalesDetails(), 1)
+    builder.setBolt(LOOKUP_SALES_DETAILS, new LookupSalesDetails(), 16)
       .setNumTasks(32)
       .shuffleGrouping(FIND_RECOMMENDED_SALES);
 
-    builder.setBolt(SAVE_RECOMMENDED_SALES, new SaveRecommendedSales(), 1)
+    builder.setBolt(SAVE_RECOMMENDED_SALES, new SaveRecommendedSales(), 4)
       .setNumTasks(8)
       .shuffleGrouping(LOOKUP_SALES_DETAILS);
 
