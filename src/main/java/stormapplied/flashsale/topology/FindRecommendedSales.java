@@ -16,13 +16,16 @@ import stormapplied.flashsale.services.FlashSaleRecommendationClient;
 import stormapplied.flashsale.services.Timeout;
 
 public class FindRecommendedSales extends BaseBasicBolt {
-  private final static int TIMEOUT = 200;
+  public static final String RETRY_STREAM = "retry";
+  public static final String SUCCESS_STREAM = "success";
+
   private FlashSaleRecommendationClient client;
 
   @Override
   public void prepare(Map config,
                       TopologyContext context) {
-    client = new FlashSaleRecommendationClient(TIMEOUT);
+    long timeout = (Long)config.get("timeout");
+    client = new FlashSaleRecommendationClient((int)timeout);
   }
 
   @Override
@@ -32,14 +35,18 @@ public class FindRecommendedSales extends BaseBasicBolt {
 
     try {
       List<String> sales = client.findSalesFor(customerId);
-      if (!sales.isEmpty()) outputCollector.emit(new Values(customerId, sales));
+      if (!sales.isEmpty()) {
+        outputCollector.emit(SUCCESS_STREAM,
+                             new Values(customerId, sales));
+      }
     } catch (Timeout e) {
-      throw new ReportedFailedException(e);
+      outputCollector.emit(RETRY_STREAM, new Values(customerId));
     }
   }
 
   @Override
   public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-    outputFieldsDeclarer.declare(new Fields("customer", "sales"));
+    outputFieldsDeclarer.declareStream(SUCCESS_STREAM, new Fields("customer", "sales"));
+    outputFieldsDeclarer.declareStream(RETRY_STREAM, new Fields("customer"));
   }
 }
